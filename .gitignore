@@ -1,5 +1,8 @@
 .bloop
 .metals
+.vscode
+project/metals.sbt
+project/project
 
 # Created by https://www.gitignore.io/api/sbt,scala,eclipse
 
