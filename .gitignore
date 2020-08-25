@@ -4,6 +4,8 @@
 project/metals.sbt
 project/project
 
+data
+
 # Created by https://www.gitignore.io/api/sbt,scala,eclipse
 
 ### Eclipse ###
