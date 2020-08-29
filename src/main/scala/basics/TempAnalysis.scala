@@ -31,6 +31,14 @@ object TempAnalysis {
       5, tempGrad(data.map(_.tmin)))
     SwingRenderer(tempPlot, 1000, 1000, true)
     
+    val highTempGrad = ColorGradient(20.0 -> BlueARGB, 60.0 -> GreenARGB, 100.0 -> RedARGB)
+    val precipPlot = Plot.scatterPlot(data.map(td => td.doy.toDouble/365+td.year), data.map(_.precip), "Precipitation", "Day of Year", "Inches of Precip",
+      5, tempGrad(data.map(_.tmax)))
+    SwingRenderer(precipPlot, 1000, 1000, true)
+
+    val rainByYear = data.groupBy(_.year).mapValues(v => v.map(_.precip).sum/v.length).toSeq.sortBy(_._1)
+    val rainTrendPlot = Plot.scatterPlot(rainByYear.map(_._1), rainByYear.map(_._2)).updatedAxis[NumericAxis]("y", _.copy(min = Some(0.0), max = Some(0.2)))
+    SwingRenderer(rainTrendPlot, 1000, 1000, true)
   }
 }
 
