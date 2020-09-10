@@ -39,6 +39,18 @@ object TempAnalysis {
     val rainByYear = data.groupBy(_.year).mapValues(v => v.map(_.precip).sum/v.length).toSeq.sortBy(_._1)
     val rainTrendPlot = Plot.scatterPlot(rainByYear.map(_._1), rainByYear.map(_._2)).updatedAxis[NumericAxis]("y", _.copy(min = Some(0.0), max = Some(0.2)))
     SwingRenderer(rainTrendPlot, 1000, 1000, true)
+
+    // Probability of more than 1 inch of rain on a day when the high is in the 80s
+    val evidence = data.foldLeft(0)((count, curData) => if (curData.tmax >= 80 && curData.tmax < 90) count+1 else count)/
+        data.length.toDouble
+    val prior =  data.foldLeft(0)((count, curData) => if (curData.precip >= 1) count+1 else count)/
+        data.length.toDouble
+    // temp in the 80s given an inch of rain 
+    val inchRain = data.filter(_.precip >= 1.0)
+    val likehood = inchRain.foldLeft(0)((count, curData) => if (curData.tmax >= 80 && curData.tmax < 90) count+1 else count)/
+        inchRain.length.toDouble
+
+    println(s"prob = $likehood * $prior / $evidence = ${likehood * prior / evidence}")
   }
 }
 
