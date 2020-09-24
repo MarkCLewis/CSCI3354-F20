@@ -12,7 +12,7 @@ import org.apache.spark.SparkContext
  */
 object HelloWorld {
 	def main(args: Array[String]): Unit = {
-		val conf = new SparkConf().setAppName("Temp Data").setMaster("local[*]")
+		val conf = new SparkConf().setAppName("Temp Data")//.setMaster("local[*]")
   	val sc = new SparkContext(conf)
   
 		sc.setLogLevel("WARN")
