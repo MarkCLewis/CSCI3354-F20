@@ -8,23 +8,24 @@ import java.awt.GridLayout
 import java.awt.BorderLayout
 import swiftvis2.plotting.styles.ScatterStyle
 
-object DensityEstimation extends App {
+object SmoothingRegression extends App {
   val xs = mutable.Buffer.fill(100)(math.random*100)
+  val ys = xs.map(x => math.sin(x / 10) + 0.2 * util.Random.nextGaussian())
   private var h = 5.0
   private var style = 0
   val lineX = (0 until 1000).map(i => i/10.0)
 
-  val updater = SwingRenderer(histogramPlot(), 1200, 1200, true)
+  val updater = SwingRenderer(regressogramPlot(), 1200, 1200, true)
   val controlFrame = new JFrame("Control")
   controlFrame.setLayout(new BorderLayout)
   val styles = new JPanel
   styles.setLayout(new GridLayout(1, 5))
   val styleGroup = new ButtonGroup
-  val histogramButton = new JRadioButton("Histogram", true)
+  val histogramButton = new JRadioButton("Regressogram", true)
   histogramButton.addChangeListener(cl => if (histogramButton.isSelected()) { style = 0; replot() })
   styleGroup.add(histogramButton)
   styles.add(histogramButton)
-  val naiveButton = new JRadioButton("Naive", false)
+  val naiveButton = new JRadioButton("Running Mean", false)
   naiveButton.addChangeListener(cl => if (naiveButton.isSelected()) { style = 1; replot() })
   styleGroup.add(naiveButton)
   styles.add(naiveButton)
@@ -36,6 +37,10 @@ object DensityEstimation extends App {
   knnButton.addChangeListener(cl => if (knnButton.isSelected()) { style = 3; replot() })
   styleGroup.add(knnButton)
   styles.add(knnButton)
+  val knnkernelButton = new JRadioButton("k-NN Kernel", false)
+  knnkernelButton.addChangeListener(cl => if (knnkernelButton.isSelected()) { style = 4; replot() })
+  styleGroup.add(knnkernelButton)
+  styles.add(knnkernelButton)
   controlFrame.add(styles, BorderLayout.NORTH)
   val slider = new JSlider(1, 20, 5)
   slider.addChangeListener(e => { h = slider.getValue(); replot() })
@@ -46,34 +51,55 @@ object DensityEstimation extends App {
   def replot(): Unit = {
     if (xs.length > 0) {
       val basePlot = style match {
-        case 0 => histogramPlot()
-        case 1 => naivePlot()
+        case 0 => regressogramPlot()
+        case 1 => runningMeanPlot()
         case 2 => kernelPlot()
         case 3 => knnPlot()
+        case 4 => knnkernelPlot()
       }
-      updater.update(basePlot.updatedPlotGrid(_.withStyle(ScatterStyle(xs, xs.map(_ => 0.1), colors = RedARGB), "x", "y", stack = 1)))
+      updater.update(basePlot.updatedPlotGrid(_.withStyle(ScatterStyle(xs, ys, colors = RedARGB), "x", "y", stack = 1)))
     }
   }
 
-  def histogramPlot(): Plot = {
-    Plot.histogramPlotFromData((0 to (100/h).ceil.toInt).map(i => i * h), xs, BlueARGB)
+  def regressogramPlot(): Plot = {
+    val y = lineX.map { lx => 
+      val bin = (lx / h).toInt
+      val inBin = (xs, ys).zipped.filter((x, y) => (x/h).toInt == bin)
+      inBin._2.sum / inBin._2.length
+    }
+    Plot.scatterPlotWithLines(lineX, y, symbolSize = 0, lineGrouping = 0)
   }
 
-  def naivePlot(): Plot = {
-    val y = lineX.map(lx => xs.count(x => (x-lx).abs < h/2))
+  def runningMeanPlot(): Plot = {
+    val y = lineX.map { lx => 
+      val inBin = (xs, ys).zipped.filter((x, y) => (x-lx).abs < h/2)
+      inBin._2.sum / inBin._2.length
+    }
     Plot.scatterPlotWithLines(lineX, y, symbolSize = 0, lineGrouping = 0)
   }
 
   def kernelPlot(): Plot = {
-    val y = lineX.map(lx => xs.map(x => math.exp(-(x-lx)*(x-lx)/(2*h))).sum)
+    val y = lineX.map { lx => 
+      val yWeight = (xs, ys).zipped.map((x, y) => { val w = math.exp(-(x-lx)*(x-lx)/(2*h)); w*y -> w })
+      yWeight.map(_._1).sum / yWeight.map(_._2).sum
+    }
     Plot.scatterPlotWithLines(lineX, y, symbolSize = 0, lineGrouping = 0)
   }
 
   def knnPlot(): Plot = {
+    val y = lineX.map { lx =>
+      val xy = xs.zip(ys).sortBy(t => (t._1 - lx).abs).take(h.toInt)
+      xy.map(_._2).sum / h
+    }
+    Plot.scatterPlotWithLines(lineX, y, symbolSize = 0, lineGrouping = 0)
+  }
+
+  def knnkernelPlot(): Plot = {
     val y = lineX.map { lx => 
       val sorted = xs.map(x => (x-lx).abs).sorted
       val dk = sorted.apply(h.toInt).abs
-      h / (2* xs.length * dk)
+      val yWeight = (xs, ys).zipped.map((x, y) => { val w = math.exp(-(x-lx)*(x-lx)/(2*dk)); w*y -> w })
+      yWeight.map(_._1).sum / yWeight.map(_._2).sum
     }
     Plot.scatterPlotWithLines(lineX, y, symbolSize = 0, lineGrouping = 0)
   }
